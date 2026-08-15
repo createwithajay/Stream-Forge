@@ -8,3 +8,4 @@ flow = Dataflow("stream_forge_topology")
 
 # Connect the mock telemetry source to the stream
 stream = op.input("mock_input", flow, TestingSource(mock_telemetry))
+op.inspect("print_output", stream)
