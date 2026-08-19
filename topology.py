@@ -1,11 +1,29 @@
+import json
 import bytewax.operators as op
 from bytewax.dataflow import Dataflow
-from bytewax.testing import TestingSource
-from data_source import mock_telemetry
+from bytewax.connectors.kafka import KafkaSource
 
-# Initialize the core dataflow pipeline
 flow = Dataflow("stream_forge_topology")
 
-# Connect the mock telemetry source to the stream
-stream = op.input("mock_input", flow, TestingSource(mock_telemetry))
-op.inspect("print_output", stream)
+stream = op.input(
+    "kafka_in", 
+    flow, 
+    KafkaSource(brokers=["localhost:9092"], topics=["truck_telemetry"])
+)
+
+def parse_payload(msg):
+    key_bytes, value_bytes = msg
+    if value_bytes is None:
+        return None
+    return json.loads(value_bytes.decode('utf-8'))
+
+parsed_stream = op.filter_map("parse_json", stream, parse_payload)
+
+# Day 3: Filter out faulty sensor data (keep only realistic temps between -20 and 60 Celsius)
+def filter_extreme_temps(data):
+    return -20.0 <= data["temp"] <= 60.0
+
+clean_stream = op.filter("filter_temps", parsed_stream, filter_extreme_temps)
+
+# Verify the final cleaned data
+op.inspect("print_clean_data", clean_stream)
