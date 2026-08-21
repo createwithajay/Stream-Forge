@@ -1,50 +1,39 @@
-import Header from "./components/Header";
-import MetricCard from "./components/MetricCard";
-import CameraGrid from "./components/CameraGrid";
-import "./App.css";
+import { useEffect, useState } from "react";
 
 function App() {
-  const metrics = [
-    {
-      title: "GPU Usage",
-      value: "72%",
-      description: "Current utilization",
-    },
-    {
-      title: "GPU Memory",
-      value: "61%",
-      description: "VRAM utilization",
-    },
-    {
-      title: "Processing FPS",
-      value: "58",
-      description: "Frames per second",
-    },
-    {
-      title: "Latency",
-      value: "34 ms",
-      description: "Pipeline latency",
-    },
-  ];
+  const [metrics, setMetrics] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/metrics")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch metrics");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setMetrics(data);
+      })
+      .catch((err) => {
+        setError(err.message);
+      });
+  }, []);
 
   return (
-    <div className="dashboard">
+    <div>
+      <h1>VisionEdge Dashboard</h1>
 
-      <Header />
+      {error && <p>{error}</p>}
 
-      <section className="metrics-grid">
-        {metrics.map((metric) => (
-          <MetricCard
-            key={metric.title}
-            title={metric.title}
-            value={metric.value}
-            description={metric.description}
-          />
-        ))}
-      </section>
-
-      <CameraGrid />
-
+      {metrics && (
+        <div>
+          <p>CPU Usage: {metrics.cpu_usage}%</p>
+          <p>GPU Usage: {metrics.gpu_usage}%</p>
+          <p>Memory Usage: {metrics.memory_usage}%</p>
+          <p>FPS: {metrics.fps}</p>
+        </div>
+      )}
     </div>
   );
 }
