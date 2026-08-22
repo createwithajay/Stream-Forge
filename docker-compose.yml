@@ -1,0 +1,18 @@
+services:
+  streamforge:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      STREAMFORGE_WORKERS: "4"
+      STREAMFORGE_QUEUE_SIZE: "50000"
+      STREAMFORGE_PROCESSING_DELAY_MS: "0.2"
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - streamforge
