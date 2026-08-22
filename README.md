@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # StreamForge Reliability Lab
 
 A local-first reliability and chaos engineering playground for high-throughput Python event processing.
@@ -255,6 +255,4 @@ I built `throughput_audit.py` to measure **actual end-to-end processing throughp
 **Observation:** Throughput scales close to linearly from 1→4 workers (near-2x per doubling), but flattens between 4→8 workers — likely CPU core contention on this machine rather than a queue bottleneck, since latency stays roughly constant.
 
 **Note:** These numbers reflect actual measured throughput on this specific machine with the default `STREAMFORGE_PROCESSING_DELAY_MS=0.2`. We do not claim a fixed "100,000 events/sec" figure — only what was measured.
-=======
-# Stream-Forge
->>>>>>> 73c5d3d0eea93c02247c6548dcf8d56bd0e8381a
+
