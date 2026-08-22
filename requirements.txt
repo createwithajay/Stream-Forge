@@ -1,1 +1,5 @@
 rocksdict==0.3.29
+bytewax==0.21.1
+confluent-kafka==2.15.0
+prometheus_client==0.26.0
+typing_extensions==4.16.0
