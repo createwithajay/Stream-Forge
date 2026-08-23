@@ -19,11 +19,15 @@ def parse_payload(msg):
 
 parsed_stream = op.filter_map("parse_json", stream, parse_payload)
 
-# Day 3: Filter out faulty sensor data (keep only realistic temps between -20 and 60 Celsius)
 def filter_extreme_temps(data):
     return -20.0 <= data["temp"] <= 60.0
 
 clean_stream = op.filter("filter_temps", parsed_stream, filter_extreme_temps)
 
-# Verify the final cleaned data
-op.inspect("print_clean_data", clean_stream)
+# Week 3, Day 1: Extract the truck_id to serve as the key for stateful processing
+def extract_truck_id(data):
+    return (data["truck_id"], data)
+
+keyed_stream = op.map("key_on_truck", clean_stream, extract_truck_id)
+
+op.inspect("print_keyed_data", keyed_stream)
