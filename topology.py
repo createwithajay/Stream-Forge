@@ -11,11 +11,11 @@ stream = op.input(
     KafkaSource(brokers=["localhost:9092"], topics=["truck_telemetry"])
 )
 
+# FIXED: Extract data using the object's .value attribute
 def parse_payload(msg):
-    key_bytes, value_bytes = msg
-    if value_bytes is None:
+    if msg.value is None:
         return None
-    return json.loads(value_bytes.decode('utf-8'))
+    return json.loads(msg.value.decode('utf-8'))
 
 parsed_stream = op.filter_map("parse_json", stream, parse_payload)
 
@@ -24,10 +24,30 @@ def filter_extreme_temps(data):
 
 clean_stream = op.filter("filter_temps", parsed_stream, filter_extreme_temps)
 
-# Week 3, Day 1: Extract the truck_id to serve as the key for stateful processing
+# Week 3, Day 1: Key the data by truck_id
 def extract_truck_id(data):
     return (data["truck_id"], data)
 
 keyed_stream = op.map("key_on_truck", clean_stream, extract_truck_id)
 
-op.inspect("print_keyed_data", keyed_stream)
+# Week 3, Day 2: Stateful Aggregation (Running Average)
+def calculate_running_average(state, data):
+    if state is None:
+        count = 0
+        total_temp = 0.0
+    else:
+        count, total_temp = state
+    
+    count += 1
+    total_temp += data["temp"]
+    
+    avg_temp = round(total_temp / count, 2)
+    
+    new_state = (count, total_temp)
+    output = {"truck_id": data["truck_id"], "running_avg_temp": avg_temp}
+    
+    return new_state, output
+
+avg_stream = op.stateful_map("truck_avg", keyed_stream, calculate_running_average)
+
+op.inspect("print_avg", avg_stream)
