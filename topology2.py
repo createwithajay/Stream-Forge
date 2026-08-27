@@ -33,6 +33,7 @@ class TruckTelemetry(faust.Record, serializer='json'):
 # Kafka Topics
 raw_telemetry_topic = app.topic('iot_truck_telemetry', value_type=TruckTelemetry)
 processed_topic = app.topic('truck_telemetry_processed', value_type=TruckTelemetry)
+dlq_topic = app.topic('iot_telemetry_dlq', value_type=bytes)  # New Dead Letter Queue
 
 # ---------------------------------------------------------
 # Fault-Tolerant Processing DAG: Consume -> Filter -> Map
@@ -65,9 +66,9 @@ async def process_telemetry_stream(stream):
             await processed_topic.send(value=transformed_event)
 
         except Exception as err:
-            # Graceful error capture to prevent partition consumer death
-            logger.error(f"Error handling event payload {event}: {err}", exc_info=True)
-
+            # Graceful failure: Route bad data to DLQ instead of crashing the partition
+            logger.error(f"Poison pill detected! Routing to DLQ: {err}")
+            await dlq_topic.send(value=str(event).encode('utf-8'))
 
 # ---------------------------------------------------------
 # Partition Rebalance & Recovery Hooks
