@@ -1,6 +1,7 @@
 import json
 import logging
 import faust
+import os
 
 # ---------------------------------------------------------
 # Logging Configuration
@@ -11,6 +12,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("stream_forge.topology")
 
+# Fetch port from environment or default to 6066 for clean execution
+WORKER_PORT = int(os.getenv("FAUST_WEB_PORT", 6066))
+
 # ---------------------------------------------------------
 # App Initialization & Resilient Worker Settings
 # ---------------------------------------------------------
@@ -20,6 +24,7 @@ app = faust.App(
     topic_partitions=3,
     store='memory://',  # Interfacing with local state / RocksDB
     consumer_auto_offset_reset='earliest',
+    web_port=WORKER_PORT
 )
 
 # ---------------------------------------------------------
@@ -71,7 +76,7 @@ async def process_telemetry_stream(stream):
             await dlq_topic.send(value=str(event).encode('utf-8'))
 
 # ---------------------------------------------------------
-# Partition Rebalance & Recovery Hooks
+# Execution
 # ---------------------------------------------------------
 if __name__ == '__main__':
     app.main()
