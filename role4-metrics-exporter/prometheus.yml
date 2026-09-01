@@ -1,0 +1,15 @@
+# Local Prometheus config for scraping this exporter.
+# Run: prometheus --config.file=prometheus.yml
+# Then open http://localhost:9090 to query metrics like:
+#   rate(events_processed_total[1m])
+#   histogram_quantile(0.95, rate(processing_duration_seconds_bucket[5m]))
+#   backpressure_index
+#   time_to_drain_seconds
+
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "pipeline-metrics-exporter"
+    static_configs:
+      - targets: ["localhost:8000"]
