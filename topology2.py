@@ -3,9 +3,9 @@ import logging
 import faust
 import os
 
-# ---------------------------------------------------------
+
 # Logging Configuration
-# ---------------------------------------------------------
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
@@ -15,9 +15,9 @@ logger = logging.getLogger("stream_forge.topology")
 # Fetch port from environment or default to 6066 for clean execution
 WORKER_PORT = int(os.getenv("FAUST_WEB_PORT", 6066))
 
-# ---------------------------------------------------------
+
 # App Initialization & Resilient Worker Settings
-# ---------------------------------------------------------
+
 app = faust.App(
     'stream-forge-topology',
     broker='kafka://localhost:9092',
@@ -27,9 +27,9 @@ app = faust.App(
     web_port=WORKER_PORT
 )
 
-# ---------------------------------------------------------
+
 # Telemetry Record Schema
-# ---------------------------------------------------------
+
 class TruckTelemetry(faust.Record, serializer='json'):
     truck_id: str
     temperature: float
@@ -40,17 +40,11 @@ raw_telemetry_topic = app.topic('iot_truck_telemetry', value_type=TruckTelemetry
 processed_topic = app.topic('truck_telemetry_processed', value_type=TruckTelemetry)
 dlq_topic = app.topic('iot_telemetry_dlq', value_type=bytes)  # New Dead Letter Queue
 
-# ---------------------------------------------------------
+
 # Fault-Tolerant Processing DAG: Consume -> Filter -> Map
-# ---------------------------------------------------------
+
 @app.agent(raw_telemetry_topic)
 async def process_telemetry_stream(stream):
-    """
-    Stream Processing Pipeline:
-    1. Consume: Ingest real-time truck events.
-    2. Filter: Discard corrupted/invalid readings (Temp <= 0).
-    3. Map / Forward: Forward clean data downstream for aggregation.
-    """
     async for event in stream:
         try:
             # Step 1: Validation / Filter Step
@@ -75,8 +69,21 @@ async def process_telemetry_stream(stream):
             logger.error(f"Poison pill detected! Routing to DLQ: {err}")
             await dlq_topic.send(value=str(event).encode('utf-8'))
 
-# ---------------------------------------------------------
+
+# Web Endpoints (Metrics & Health)
+
+@app.page('/health')
+class HealthCheck(faust.web.View):
+    """Provides a live status ping for the React Flow dashboard and Prometheus scraper."""
+    async def get(self, request, **kwargs):
+        return self.json({
+            "status": "healthy",
+            "service": "stream-forge-topology",
+            "port": WORKER_PORT
+        })
+
+
 # Execution
-# ---------------------------------------------------------
+
 if __name__ == '__main__':
     app.main()
