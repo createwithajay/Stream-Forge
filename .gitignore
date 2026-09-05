@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .env
 .venv/
+role3_state/
+role-3-rocksdb-state
