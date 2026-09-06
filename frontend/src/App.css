@@ -178,3 +178,101 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* Pipeline Status */
+
+.pipeline-section {
+  background: #181b24;
+  border: 1px solid #292d38;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 35px;
+}
+
+.pipeline-status {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.pipeline-card {
+  background: #10131a;
+  border: 1px solid #292d38;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.pipeline-card h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.pipeline-card p {
+  margin: 0;
+  color: #22c55e;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+@media (max-width: 900px) {
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .pipeline-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Connection Status */
+
+.offline-dot {
+  background: #ef4444;
+}
+
+.error-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  background: #2a1518;
+  border: 1px solid #5b2025;
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  color: #ef4444;
+}
+
+.error-message button {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  border-radius: 6px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.error-message button:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.last-updated {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.pipeline-running {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.pipeline-stopped {
+  color: #ef4444;
+  font-weight: bold;
+}

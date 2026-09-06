@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Gauge, generate_latest
 from fastapi.responses import Response
+from prometheus_client import Counter, Gauge, generate_latest
 import psutil
+
+
+# --------------------------------------------------
+# VisionEdge FastAPI Application
+# --------------------------------------------------
 
 app = FastAPI(
     title="VisionEdge API",
@@ -10,7 +15,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow React frontend to communicate with FastAPI
+
+# --------------------------------------------------
+# CORS Configuration
+# --------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -20,17 +29,39 @@ app.add_middleware(
 )
 
 
-# Prometheus metrics
-cpu_gauge = Gauge("visionedge_cpu_usage_percent", "CPU usage percentage")
-memory_gauge = Gauge("visionedge_memory_usage_percent", "Memory usage percentage")
-gpu_gauge = Gauge("visionedge_gpu_usage_percent", "GPU usage percentage")
-fps_gauge = Gauge("visionedge_fps", "Video frames per second")
+# --------------------------------------------------
+# Prometheus Metrics
+# --------------------------------------------------
+
+cpu_gauge = Gauge(
+    "visionedge_cpu_usage_percent",
+    "CPU usage percentage",
+)
+
+memory_gauge = Gauge(
+    "visionedge_memory_usage_percent",
+    "Memory usage percentage",
+)
+
+gpu_gauge = Gauge(
+    "visionedge_gpu_usage_percent",
+    "GPU usage percentage",
+)
+
+fps_gauge = Gauge(
+    "visionedge_fps",
+    "Video frames per second",
+)
 
 camera_requests = Counter(
     "visionedge_camera_requests_total",
     "Number of camera monitoring requests",
 )
 
+
+# --------------------------------------------------
+# Root Endpoint
+# --------------------------------------------------
 
 @app.get("/")
 def root():
@@ -41,6 +72,10 @@ def root():
     }
 
 
+# --------------------------------------------------
+# Health Check
+# --------------------------------------------------
+
 @app.get("/health")
 def health_check():
     return {
@@ -49,19 +84,23 @@ def health_check():
     }
 
 
+# --------------------------------------------------
+# System Metrics
+# --------------------------------------------------
+
 @app.get("/api/metrics")
 def get_metrics():
     cpu_usage = psutil.cpu_percent(interval=0.1)
     memory_usage = psutil.virtual_memory().percent
 
-    # GPU value is currently simulated.
-    # It can later be connected to NVIDIA GPU monitoring.
+    # GPU usage is currently simulated.
+    # This can later be connected to NVIDIA GPU monitoring.
     gpu_usage = 62
 
     # FPS is currently simulated from the video pipeline.
     fps = 30
 
-    # Update Prometheus metrics
+    # Update Prometheus metrics.
     cpu_gauge.set(cpu_usage)
     memory_gauge.set(memory_usage)
     gpu_gauge.set(gpu_usage)
@@ -74,6 +113,27 @@ def get_metrics():
         "fps": fps,
     }
 
+
+# --------------------------------------------------
+# Pipeline Status
+# --------------------------------------------------
+
+@app.get("/api/pipeline")
+def get_pipeline_status():
+    return {
+        "pipeline": {
+            "video_input": "ACTIVE",
+            "deepstream": "ACTIVE",
+            "tensorrt_inference": "ACTIVE",
+            "output": "ACTIVE",
+        },
+        "status": "RUNNING",
+    }
+
+
+# --------------------------------------------------
+# Camera Monitoring
+# --------------------------------------------------
 
 @app.get("/api/cameras")
 def get_cameras():
@@ -91,13 +151,31 @@ def get_cameras():
             {
                 "id": 2,
                 "name": "Camera 02",
+                "status": "LIVE",
+                "resolution": "1080p",
+                "fps": 30,
+            },
+            {
+                "id": 3,
+                "name": "Camera 03",
+                "status": "LIVE",
+                "resolution": "720p",
+                "fps": 25,
+            },
+            {
+                "id": 4,
+                "name": "Camera 04",
                 "status": "OFFLINE",
                 "resolution": None,
                 "fps": 0,
             },
-        ]
+        ],
     }
 
+
+# --------------------------------------------------
+# Prometheus Endpoint
+# --------------------------------------------------
 
 @app.get("/metrics")
 def prometheus_metrics():
