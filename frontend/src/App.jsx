@@ -233,7 +233,7 @@ function App() {
                   Resolution: {camera.resolution || "--"}
                 </span>
 
-                <span> • </span>
+                <span>•</span>
 
                 <span>
                   {camera.fps || 0} FPS
