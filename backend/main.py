@@ -602,35 +602,34 @@ def switch_engine(
     global active_engine
 
     requested_name = request.engine_name.strip()
-    engine_dir = ENGINE_DIR.resolve()
-    engine_path = (engine_dir / requested_name).resolve()
 
-    try:
-        engine_path.relative_to(engine_dir)
-    except ValueError:
+    if not requested_name:
         raise HTTPException(
             status_code=400,
             detail="Invalid engine filename",
         )
 
+    matching_engine = None
 
-    if not engine_path.is_file():
+    for engine_file in ENGINE_DIR.iterdir():
+        if (
+            engine_file.is_file()
+            and engine_file.name == requested_name
+            and engine_file.suffix.lower() in {
+                ".engine",
+                ".plan",
+            }
+        ):
+            matching_engine = engine_file
+            break
+
+    if matching_engine is None:
         raise HTTPException(
             status_code=404,
             detail="Engine file not found",
         )
 
-    if engine_path.suffix.lower() not in {
-        ".engine",
-        ".plan",
-    }:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid TensorRT engine file",
-        )
-
-    active_engine = engine_path.name
-
+    active_engine = matching_engine.name
     return {
         "status": "switched",
         "active_engine": active_engine,
