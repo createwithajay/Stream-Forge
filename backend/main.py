@@ -671,7 +671,6 @@ def performance_audit():
         "min_latency_ms": result.min_latency_ms,
         "max_latency_ms": result.max_latency_ms,
         "inference_mode": result.inference_mode,
-                "inference_mode": result.inference_mode,
         "benchmark_mode": (
             "REAL_TENSORRT"
             if result.inference_mode == "REAL_TENSORRT"

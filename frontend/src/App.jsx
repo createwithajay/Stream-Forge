@@ -11,6 +11,7 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [systemOnline, setSystemOnline] = useState(false);
   const [compilerStatus, setCompilerStatus] = useState(null);
+  const [decoderStatus, setDecoderStatus] = useState(null);
   const [inferenceStatus, setInferenceStatus] = useState(null);
   const [memoryProfile, setMemoryProfile] = useState(null);
   const [performanceAudit, setPerformanceAudit] = useState(null);
@@ -25,40 +26,44 @@ function App() {
   // Fetch dashboard data
   async function fetchDashboardData() {
     try {
-     const [
-  metricsResponse,
-  camerasResponse,
-  pipelineResponse,
-  streamsResponse,
-  compilerResponse,
-  inferenceResponse,
-  memoryResponse,
-  performanceResponse,
-] = await Promise.all([
-  fetch("http://127.0.0.1:8000/api/metrics"),
-  fetch("http://127.0.0.1:8000/api/cameras"),
-  fetch("http://127.0.0.1:8000/api/pipeline"),
-  fetch("http://127.0.0.1:8000/api/streams"),
-  fetch("http://127.0.0.1:8000/api/compiler/status"),
-  fetch("http://127.0.0.1:8000/api/inference/status"),
-  fetch("http://127.0.0.1:8000/api/memory/profile"),
-  fetch("http://127.0.0.1:8000/api/performance/audit"),
-]);
+      const [
+        metricsResponse,
+        camerasResponse,
+        pipelineResponse,
+        streamsResponse,
+        compilerResponse,
+        decoderResponse,
+        inferenceResponse,
+        memoryResponse,
+        performanceResponse,
+      ] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/metrics"),
+        fetch("http://127.0.0.1:8000/api/cameras"),
+        fetch("http://127.0.0.1:8000/api/pipeline"),
+        fetch("http://127.0.0.1:8000/api/streams"),
+        fetch("http://127.0.0.1:8000/api/compiler/status"),
+        fetch("http://127.0.0.1:8000/api/decoder/status"),
+        fetch("http://127.0.0.1:8000/api/inference/status"),
+        fetch("http://127.0.0.1:8000/api/memory/profile"),
+        fetch("http://127.0.0.1:8000/api/performance/audit"),
+      ]);
 
-    if (
-  !metricsResponse.ok ||
-  !camerasResponse.ok ||
-  !pipelineResponse.ok ||
-  !streamsResponse.ok ||
-  !compilerResponse.ok ||
-  !inferenceResponse.ok ||
-  !memoryResponse.ok ||
-  !performanceResponse.ok
-) {
+      if (
+        !metricsResponse.ok ||
+        !camerasResponse.ok ||
+        !pipelineResponse.ok ||
+        !streamsResponse.ok ||
+        !compilerResponse.ok ||
+        !decoderResponse.ok ||
+        !inferenceResponse.ok ||
+        !memoryResponse.ok ||
+        !performanceResponse.ok
+      ) {
         throw new Error("Failed to fetch dashboard data");
       }
 
       const metricsData = await metricsResponse.json();
+      const decoderData = await decoderResponse.json();
       const camerasData = await camerasResponse.json();
       const pipelineData = await pipelineResponse.json();
       const streamsData = await streamsResponse.json();
@@ -66,13 +71,14 @@ function App() {
       const memoryData = await memoryResponse.json();
       const performanceData = await performanceResponse.json();
       const inferenceData = await inferenceResponse.json();
-      setInferenceStatus(inferenceData);
 
+      setInferenceStatus(inferenceData);
       setMetrics(metricsData);
       setCameras(camerasData.cameras || []);
       setPipeline(pipelineData);
       setStreams(streamsData.streams || []);
       setCompilerStatus(compilerData);
+      setDecoderStatus(decoderData);
       setMemoryProfile(memoryData);
       setPerformanceAudit(performanceData);
 
@@ -284,11 +290,8 @@ function App() {
 
             <div className="metric-subvalue">
               Decoder:{" "}
-              {metrics.decoder_utilization !==
-                null &&
-              metrics.decoder_utilization !==
-                undefined
-                ? `${metrics.decoder_utilization}%`
+              {decoderStatus
+                ? `${decoderStatus.decoder} (${decoderStatus.mode})`
                 : "Unavailable"}
             </div>
           </div>
@@ -386,138 +389,138 @@ function App() {
           </div>
         </section>
       )}
-        
-        {/* Inference Pipeline */}
-{inferenceStatus && (
-  <section className="pipeline-section">
 
-    <div className="section-title">
-      <h2>Inference Pipeline</h2>
+      {/* Inference Pipeline */}
+      {inferenceStatus && (
+        <section className="pipeline-section">
 
-      <span className="pipeline-running">
-        ● {inferenceStatus.pipeline.inference_mode}
-      </span>
-    </div>
+          <div className="section-title">
+            <h2>Inference Pipeline</h2>
 
-    <div className="pipeline-grid">
+            <span className="pipeline-running">
+              ● {inferenceStatus.pipeline.inference_mode}
+            </span>
+          </div>
 
-      <div className="pipeline-card">
-        <h3>Frames Processed</h3>
-        <span>
-          {inferenceStatus.pipeline.frames_processed}
-        </span>
-      </div>
+          <div className="pipeline-grid">
 
-      <div className="pipeline-card">
-        <h3>Detections</h3>
-        <span>
-          {inferenceStatus.pipeline.detections}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>Frames Processed</h3>
+              <span>
+                {inferenceStatus.pipeline.frames_processed}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>Average FPS</h3>
-        <span>
-          {inferenceStatus.pipeline.average_fps}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>Detections</h3>
+              <span>
+                {inferenceStatus.pipeline.detections}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>Latency</h3>
-        <span>
-          {inferenceStatus.pipeline.average_latency_ms} ms
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>Average FPS</h3>
+              <span>
+                {inferenceStatus.pipeline.average_fps}
+              </span>
+            </div>
 
-    </div>
-  </section>
-)}
+            <div className="pipeline-card">
+              <h3>Latency</h3>
+              <span>
+                {inferenceStatus.pipeline.average_latency_ms} ms
+              </span>
+            </div>
 
-       {/* Model Compiler Status */}
-{compilerStatus && (
-  <section className="camera-section">
+          </div>
+        </section>
+      )}
 
-    <div className="section-title">
-      <h2>Model Compiler Status</h2>
+      {/* Model Compiler Status */}
+      {compilerStatus && (
+        <section className="camera-section">
 
-      <span
-        className={
-          compilerStatus.ready
-            ? "pipeline-running"
-            : "pipeline-stopped"
-        }
-      >
-        ● {compilerStatus.mode}
-      </span>
-    </div>
+          <div className="section-title">
+            <h2>Model Compiler Status</h2>
 
-    <div className="pipeline-grid">
+            <span
+              className={
+                compilerStatus.ready
+                  ? "pipeline-running"
+                  : "pipeline-stopped"
+              }
+            >
+              ● {compilerStatus.mode}
+            </span>
+          </div>
 
-      <div className="pipeline-card">
-        <h3>Compilation</h3>
-        <span>
-          {compilerStatus.ready
-            ? "READY"
-            : "SIMULATED"}
-        </span>
-      </div>
+          <div className="pipeline-grid">
 
-      <div className="pipeline-card">
-        <h3>PyTorch</h3>
-        <span>
-          {compilerStatus.hardware.pytorch
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>Compilation</h3>
+              <span>
+                {compilerStatus.ready
+                  ? "READY"
+                  : "SIMULATED"}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>ONNX</h3>
-        <span>
-          {compilerStatus.hardware.onnx
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>PyTorch</h3>
+              <span>
+                {compilerStatus.hardware.pytorch
+                  ? "AVAILABLE"
+                  : "NOT AVAILABLE"}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>TensorRT</h3>
-        <span>
-          {compilerStatus.hardware.tensorrt
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>ONNX</h3>
+              <span>
+                {compilerStatus.hardware.onnx
+                  ? "AVAILABLE"
+                  : "NOT AVAILABLE"}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>CUDA / NVIDIA</h3>
-        <span>
-          {compilerStatus.hardware.cuda
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>TensorRT</h3>
+              <span>
+                {compilerStatus.hardware.tensorrt
+                  ? "AVAILABLE"
+                  : "NOT AVAILABLE"}
+              </span>
+            </div>
 
-      <div className="pipeline-card">
-        <h3>CuPy</h3>
-        <span>
-          {compilerStatus.hardware.cupy
-            ? "AVAILABLE"
-            : "NOT AVAILABLE"}
-        </span>
-      </div>
+            <div className="pipeline-card">
+              <h3>CUDA / NVIDIA</h3>
+              <span>
+                {compilerStatus.hardware.cuda
+                  ? "AVAILABLE"
+                  : "NOT AVAILABLE"}
+              </span>
+            </div>
 
-    </div>
+            <div className="pipeline-card">
+              <h3>CuPy</h3>
+              <span>
+                {compilerStatus.hardware.cupy
+                  ? "AVAILABLE"
+                  : "NOT AVAILABLE"}
+              </span>
+            </div>
 
-    {!compilerStatus.ready && (
-      <div className="simulation-notice">
-        ⚠ Real TensorRT compilation requires the NVIDIA/CUDA
-        environment. Current compiler mode is SIMULATED.
-      </div>
-    )}
+          </div>
 
-  </section>
-)}
+          {!compilerStatus.ready && (
+            <div className="simulation-notice">
+              ⚠ Real TensorRT compilation requires the NVIDIA/CUDA
+              environment. Current compiler mode is SIMULATED.
+            </div>
+          )}
+
+        </section>
+      )}
 
       {/* TensorRT Engine Management */}
       <section className="camera-section">
@@ -647,55 +650,58 @@ function App() {
 
       </section>
 
-       {/* Performance Audit */}
-<section className="camera-section">
+      {/* Performance Audit */}
+      <section className="camera-section">
 
-  <div className="section-title">
-    <h2>
-      Performance Audit
-    </h2>
+        <div className="section-title">
+          <h2>
+            Performance Audit
+          </h2>
 
-    <span>
-      TensorRT Benchmark
-    </span>
-  </div>
-
-  {performanceAudit && (
-    <div className="camera-grid">
-
-      <div className="camera-card">
-        <div className="camera-header">
-          <h3>Inference Performance</h3>
-
-          <span className="live">
-            ● {performanceAudit.benchmark_mode}
+          <span>
+            TensorRT Benchmark
           </span>
         </div>
 
-        <div className="camera-info">
-          <span>
-            {performanceAudit.frames_tested} frames
-          </span>
+        {performanceAudit && (
+          <div className="camera-grid">
 
-          <span>•</span>
+            <div className="camera-card">
 
-          <span>
-            {performanceAudit.average_fps} FPS
-          </span>
+              <div className="camera-header">
+                <h3>Inference Performance</h3>
 
-          <span>•</span>
+                <span className="live">
+                  ● {performanceAudit.benchmark_mode}
+                </span>
+              </div>
 
-          <span>
-            {performanceAudit.average_latency_ms} ms latency
-          </span>
-        </div>
+              <div className="camera-info">
 
-      </div>
+                <span>
+                  {performanceAudit.frames_tested} frames
+                </span>
 
-    </div>
-  )}
+                <span>•</span>
 
-</section>
+                <span>
+                  {performanceAudit.average_fps} FPS
+                </span>
+
+                <span>•</span>
+
+                <span>
+                  {performanceAudit.average_latency_ms} ms latency
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+      </section>
 
       {/* WebRTC Test Stream */}
       <section className="camera-section">
@@ -715,146 +721,146 @@ function App() {
       </section>
 
       {/* Memory Profile */}
-<section className="camera-section">
+      <section className="camera-section">
 
-  <div className="section-title">
-    <h2>Memory Profile</h2>
-    <span>Runtime Memory Monitoring</span>
-  </div>
-
-  {memoryProfile && (
-    <div className="camera-grid">
-
-      <div className="camera-card">
-
-        <div className="camera-header">
-          <h3>Process Memory</h3>
-
-          <span className="live">
-            ● {memoryProfile.potential_memory_leak
-              ? "CHECK"
-              : "STABLE"}
-          </span>
+        <div className="section-title">
+          <h2>Memory Profile</h2>
+          <span>Runtime Memory Monitoring</span>
         </div>
 
-        <div className="camera-info">
+        {memoryProfile && (
+          <div className="camera-grid">
 
-          <span>
-            Before: {memoryProfile.process_memory_before_mb} MB
-          </span>
+            <div className="camera-card">
 
-          <span>•</span>
+              <div className="camera-header">
+                <h3>Process Memory</h3>
 
-          <span>
-            After: {memoryProfile.process_memory_after_mb} MB
-          </span>
+                <span className="live">
+                  ● {memoryProfile.potential_memory_leak
+                    ? "CHECK"
+                    : "STABLE"}
+                </span>
+              </div>
 
-          <span>•</span>
+              <div className="camera-info">
 
-          <span>
-            Growth: {memoryProfile.process_memory_growth_mb} MB
-          </span>
+                <span>
+                  Before: {memoryProfile.process_memory_before_mb} MB
+                </span>
 
-          <span>•</span>
+                <span>•</span>
 
-          <span>
-            GPU: {memoryProfile.gpu_available
-              ? "Available"
-              : "CPU Fallback"}
-          </span>
+                <span>
+                  After: {memoryProfile.process_memory_after_mb} MB
+                </span>
 
-        </div>
+                <span>•</span>
 
-      </div>
+                <span>
+                  Growth: {memoryProfile.process_memory_growth_mb} MB
+                </span>
 
-    </div>
-  )}
+                <span>•</span>
 
-</section>
+                <span>
+                  GPU: {memoryProfile.gpu_available
+                    ? "Available"
+                    : "CPU Fallback"}
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+      </section>
 
       {/* Multi-Stream Telemetry */}
-<section className="camera-section">
+      <section className="camera-section">
 
-  <div className="section-title">
-    <h2>
-      Multi-Stream Telemetry
-    </h2>
+        <div className="section-title">
+          <h2>
+            Multi-Stream Telemetry
+          </h2>
 
-    <span>
-      Asyncio Stream Manager
-    </span>
-  </div>
-
-  <div className="camera-grid">
-
-    {streams.map((stream) => (
-      <div
-        className="camera-card"
-        key={stream.stream_id}
-      >
-
-        <div className="camera-header">
-
-          <h3>
-            {stream.name}
-          </h3>
-
-          <span
-            className={
-              stream.status === "RUNNING"
-                ? "live"
-                : "offline"
-            }
-          >
-            ● {stream.status}
+          <span>
+            Asyncio Stream Manager
           </span>
+        </div>
+
+        <div className="camera-grid">
+
+          {streams.map((stream) => (
+            <div
+              className="camera-card"
+              key={stream.stream_id}
+            >
+
+              <div className="camera-header">
+
+                <h3>
+                  {stream.name}
+                </h3>
+
+                <span
+                  className={
+                    stream.status === "RUNNING"
+                      ? "live"
+                      : "offline"
+                  }
+                >
+                  ● {stream.status}
+                </span>
+
+              </div>
+
+              <div
+                className={
+                  stream.status === "RUNNING"
+                    ? "video-placeholder"
+                    : "video-placeholder offline-video"
+                }
+              >
+                {stream.status === "RUNNING"
+                  ? "Asyncio Stream Active"
+                  : "Stream Offline"}
+              </div>
+
+              <div className="camera-info">
+
+                <span>
+                  {stream.fps} FPS
+                </span>
+
+                <span>•</span>
+
+                <span>
+                  {stream.frames_processed} frames
+                </span>
+
+                <span>•</span>
+
+                <span>
+                  {stream.detections} detections
+                </span>
+
+                <span>•</span>
+
+                <span>
+                  {stream.processing_mode}
+                </span>
+
+              </div>
+
+            </div>
+          ))}
 
         </div>
 
-        <div
-          className={
-            stream.status === "RUNNING"
-              ? "video-placeholder"
-              : "video-placeholder offline-video"
-          }
-        >
-          {stream.status === "RUNNING"
-            ? "Asyncio Stream Active"
-            : "Stream Offline"}
-        </div>
-
-        <div className="camera-info">
-
-          <span>
-            {stream.fps} FPS
-          </span>
-
-          <span>•</span>
-
-          <span>
-            {stream.frames_processed} frames
-          </span>
-
-          <span>•</span>
-
-          <span>
-            {stream.detections} detections
-          </span>
-
-          <span>•</span>
-
-          <span>
-            {stream.processing_mode}
-          </span>
-
-        </div>
-
-      </div>
-    ))}
-
-  </div>
-
-</section>
+      </section>
 
       {/* Camera Monitoring */}
       <section className="camera-section">
