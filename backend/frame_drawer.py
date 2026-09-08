@@ -7,8 +7,8 @@ CPU_FALLBACK:
     Uses OpenCV + NumPy.
 
 REAL_CUDA:
-    Uses the VisionEdge memory layer and can be extended for
-    CUDA-native drawing on NVIDIA deployment hardware.
+    Uses the VisionEdge memory layer. Drawing currently remains
+    CPU-side OpenCV after transferring the frame to host memory.
 """
 
 from typing import Any, Iterable
@@ -121,13 +121,16 @@ class FrameDrawer:
             "component": "VisionEdge Frame Drawer",
             "mode": self.memory.mode,
             "backend": (
-                "CuPy + OpenCV"
+                "CUDA-aware memory + CPU OpenCV"
                 if self.memory.mode == "REAL_CUDA"
                 else "NumPy + OpenCV"
             ),
             "opencv_available": True,
+            "cuda_native_drawing": False,
+            "zero_copy_drawing": False,
             "note": (
-                "CUDA-aware memory path available."
+                "CUDA memory is available, but drawing currently uses "
+                "CPU OpenCV after transferring the frame to host memory."
                 if self.memory.mode == "REAL_CUDA"
                 else "Drawing is running through CPU fallback."
             ),
@@ -138,7 +141,6 @@ frame_drawer = FrameDrawer()
 
 
 if __name__ == "__main__":
-
     print("VisionEdge Frame Drawer Test")
     print("-" * 30)
 
