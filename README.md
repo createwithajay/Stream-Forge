@@ -1,102 +1,60 @@
-# \# Stream-Forge
+# Stream-Forge
 
-# 
+StreamForge is a distributed Python event processing and reliability engineering project.
 
-# \## VisionEdge – Hardware-Accelerated Video Pipeline
+This repository contains the core StreamForge Reliability Lab together with the VisionEdge hardware-aware video monitoring work contributed by Role 5.
 
-# 
+---
 
-# VisionEdge is an Edge AI monitoring system designed to monitor a hardware-accelerated video processing pipeline through a web dashboard.
+# StreamForge Reliability Lab
 
-# 
+A local-first reliability and chaos engineering playground for high-throughput Python event processing.
 
-# The dashboard provides real-time visibility into system metrics, pipeline stages, and camera status.
+## Features
 
-# 
+### Reliability
+- Supervisor-managed worker processes
+- Automatic worker restart
+- Queue-depth monitoring
+- Event success/error tracking
+- Worker health and restart counters
 
-# \---
+### Performance
+- Configurable event generator
+- Throughput benchmark
+- Average and p95 processing latency
+- Events-per-second measurement
+- Backpressure visibility
 
-# 
+### Chaos Engineering
+- Stop a selected worker
+- Simulate worker failure
+- Observe queue growth and recovery
+- Compare before/after throughput
+- Recovery-time measurement
 
-# \## Role 5 – Topology \& Dashboard Engineer
+### Observability
+- `/metrics` Prometheus endpoint
+- JSON health/status endpoints
+- Live browser dashboard
+- Structured application logs
 
-# 
+## Architecture
 
-# My contribution focused on designing and integrating the monitoring dashboard with the FastAPI backend.
-
-# 
-
-# \### Responsibilities
-
-# 
-
-# \- Built the React monitoring dashboard
-
-# \- Integrated React with FastAPI REST APIs
-
-# \- Added CPU, GPU, memory, and FPS monitoring
-
-# \- Added video pipeline status monitoring
-
-# \- Added camera monitoring for multiple cameras
-
-# \- Implemented LIVE/OFFLINE camera indicators
-
-# \- Added automatic dashboard refresh
-
-# \- Added backend connection/error handling
-
-# \- Tested API endpoints and backend recovery
-
-# \- Improved responsive dashboard layout
-
-# 
-
-# \---
-
-# 
-
-# \## System Architecture
-
-# 
-
-# ```text
-
-# &#x20;                VisionEdge Pipeline
-
-# &#x20;                        |
-
-# &#x20;         +--------------+--------------+
-
-# &#x20;         |              |              |
-
-# &#x20;     Video Input    DeepStream      TensorRT
-
-# &#x20;         |              |              |
-
-# &#x20;         +--------------+--------------+
-
-# &#x20;                        |
-
-# &#x20;                   FastAPI Backend
-
-# &#x20;                        |
-
-# &#x20;             REST API / Monitoring
-
-# &#x20;                        |
-
-# &#x20;                 React Dashboard
-
-# &#x20;                        |
-
-# &#x20;       +----------------+----------------+
-
-# &#x20;       |                |                |
-
-# &#x20;    Metrics          Pipeline          Cameras
-
-# &#x20;    CPU/GPU          Status            Status
-
-# &#x20;    Memory/FPS
-
+```text
+Event Generator
+       |
+       v
+ Shared Queue
+       |
+       +--------+--------+--------+
+       |        |        |        |
+    Worker1 Worker2    ...     WorkerN
+       |        |                 |
+       +--------+-----------------+
+                |
+                v
+        Metrics Registry
+                |
+                v
+        FastAPI Dashboards

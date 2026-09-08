@@ -1,7 +1,9 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 .env
+
 backend/engines/
 backend/main_backup.py
 backend/stream_manager_backup.py

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StreamForge Reliability Lab</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">RELIABILITY ENGINEERING LAB</p>
+        <h1>Stream<span>Forge</span></h1>
+        <p class="subtitle">Break the stream. Measure the recovery. Prove the system.</p>
+      </div>
+      <div class="live"><i></i> LIVE MONITOR</div>
+    </header>
+
+    <section class="stats">
+      <article class="card"><small>THROUGHPUT</small><strong id="throughput">0</strong><span>events/sec</span></article>
+      <article class="card"><small>QUEUE DEPTH</small><strong id="queue">0</strong><span>events waiting</span></article>
+      <article class="card"><small>WORKERS</small><strong id="workers">0/0</strong><span>healthy</span></article>
+      <article class="card"><small>PROCESSED</small><strong id="processed">0</strong><span>completed events</span></article>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">CONTROL ROOM</p>
+            <h2>Workload generator</h2>
+          </div>
+          <button class="secondary" onclick="resetSystem()">Reset</button>
+        </div>
+
+        <label>Events to generate</label>
+        <div class="control-row">
+          <input id="count" type="number" min="1" max="1000000" value="10000">
+          <button onclick="generate()">Generate workload</button>
+        </div>
+        <p id="generatorResult" class="muted">Ready for a controlled load test.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">CHAOS ENGINE</p>
+            <h2>Failure injection</h2>
+          </div>
+          <span class="badge">CONTROLLED</span>
+        </div>
+        <div id="workerList" class="workers"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">OBSERVABILITY</p>
+          <h2>Worker topology</h2>
+        </div>
+        <a href="/metrics" target="_blank">Prometheus metrics ↗</a>
+      </div>
+      <div id="topology" class="topology"></div>
+    </section>
+
+    <footer>
+      <span>StreamForge Reliability Lab</span>
+      <span>FastAPI · Python Multiprocessing · Prometheus</span>
+    </footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
