@@ -601,9 +601,18 @@ def switch_engine(
 
     global active_engine
 
-    engine_path = (
-        ENGINE_DIR / request.engine_name
-    )
+    requested_name = request.engine_name.strip()
+    engine_dir = ENGINE_DIR.resolve()
+    engine_path = (engine_dir / requested_name).resolve()
+
+    try:
+        engine_path.relative_to(engine_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid engine filename",
+        )
+
 
     if not engine_path.is_file():
         raise HTTPException(
