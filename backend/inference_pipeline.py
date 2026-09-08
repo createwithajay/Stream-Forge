@@ -5,13 +5,19 @@ Connects:
 
 Video Decoder
      ↓
-GPU Memory Manager
+GPU/CPU Memory Manager
      ↓
 Inference Engine
+     ↓
+Frame Drawing Layer
      ↓
 Detection Results
      ↓
 Telemetry
+
+The pipeline is hardware-aware:
+- NVIDIA/CUDA + CuPy → REAL_CUDA path
+- Development machine → CPU_FALLBACK
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ from dataclasses import dataclass
 from video_decoder import create_decoder
 from inference_engine import InferenceEngine
 from gpu_memory import GPUMemoryManager
+from frame_drawer import FrameDrawer
 
 
 @dataclass
@@ -34,7 +41,7 @@ class PipelineStats:
 
 
 class InferencePipeline:
-    """Connect video decoding, memory management and object inference."""
+    """Connect decoding, memory, inference, drawing and telemetry."""
 
     def __init__(
         self,
@@ -53,12 +60,17 @@ class InferencePipeline:
 
         self.inference = InferenceEngine()
 
+        self.drawer = FrameDrawer(
+            self.memory
+        )
+
         self.stats = PipelineStats()
 
     def run(self) -> PipelineStats:
-        """Process decoded frames through memory and inference."""
+        """Process decoded frames through the complete pipeline."""
 
         start_time = time.perf_counter()
+
         total_latency = 0.0
         total_detections = 0
 
@@ -69,13 +81,7 @@ class InferencePipeline:
                 decoded_frame.image
             )
 
-            # Run inference.
-            #
-            # On NVIDIA/CUDA hardware this can receive a CuPy
-            # GPU buffer when the inference implementation supports it.
-            #
-            # On the current development machine this remains a
-            # NumPy CPU fallback.
+            # Run object inference.
             result = self.inference.infer(
                 processing_frame
             )
@@ -84,6 +90,18 @@ class InferencePipeline:
 
             total_latency += latency
             total_detections += result["detection_count"]
+
+            # Draw inference results onto the frame.
+            detections = result.get(
+                "detections",
+                [],
+            )
+
+            if detections:
+                processing_frame = self.drawer.draw_detections(
+                    processing_frame,
+                    detections,
+                )
 
             self.stats.frames_processed += 1
 
@@ -95,6 +113,7 @@ class InferencePipeline:
         )
 
         if self.stats.frames_processed and elapsed > 0:
+
             self.stats.average_fps = round(
                 self.stats.frames_processed / elapsed,
                 2,
@@ -116,6 +135,7 @@ class InferencePipeline:
             "source": self.source,
             "decoder": "PyAV",
             "memory": self.memory.status(),
+            "drawer": self.drawer.status(),
             "inference_engine": "VisionEdge Inference Engine",
             "inference_mode": self.inference.mode,
             "frames_processed": self.stats.frames_processed,
@@ -126,6 +146,7 @@ class InferencePipeline:
 
 
 if __name__ == "__main__":
+
     print("VisionEdge Inference Pipeline")
     print("=" * 34)
 
@@ -140,17 +161,43 @@ if __name__ == "__main__":
     print("Pipeline Results")
     print("----------------")
 
-    print(f"Frames processed: {stats.frames_processed}")
-    print(f"Detections:       {stats.detections}")
-    print(f"Elapsed time:     {stats.elapsed_seconds} sec")
-    print(f"Average FPS:      {stats.average_fps}")
-    print(f"Average latency:  {stats.average_latency_ms} ms")
-    print(f"Inference mode:   {pipeline.inference.mode}")
-    print(f"Memory mode:      {pipeline.memory.mode}")
+    print(
+        f"Frames processed: {stats.frames_processed}"
+    )
+
+    print(
+        f"Detections:       {stats.detections}"
+    )
+
+    print(
+        f"Elapsed time:     {stats.elapsed_seconds} sec"
+    )
+
+    print(
+        f"Average FPS:      {stats.average_fps}"
+    )
+
+    print(
+        f"Average latency:  {stats.average_latency_ms} ms"
+    )
+
+    print(
+        f"Inference mode:   {pipeline.inference.mode}"
+    )
+
+    print(
+        f"Memory mode:      {pipeline.memory.mode}"
+    )
+
+    print(
+        f"Drawing backend:  {pipeline.drawer.status()['backend']}"
+    )
 
     print()
     print("Pipeline status:")
     print(pipeline.status())
 
     print()
-    print("Inference pipeline test completed successfully.")
+    print(
+        "Inference pipeline test completed successfully."
+    )
