@@ -4,7 +4,9 @@ import shutil
 import uuid
 import subprocess
 
+from inference_pipeline import InferencePipeline
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from video_decoder import decoder_status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -624,4 +626,27 @@ def switch_engine(
         "message": (
             "Active TensorRT engine changed successfully."
         ),
+    }
+@app.get("/api/decoder/status")
+def decoder_status_api():
+    return decoder_status()
+
+@app.get("/api/inference/status")
+def inference_status():
+    pipeline = InferencePipeline(
+        source="mock://camera",
+        max_frames=30,
+    )
+
+    stats = pipeline.run()
+
+    return {
+        "pipeline": pipeline.status(),
+        "results": {
+            "frames_processed": stats.frames_processed,
+            "detections": stats.detections,
+            "elapsed_seconds": stats.elapsed_seconds,
+            "average_fps": stats.average_fps,
+            "average_latency_ms": stats.average_latency_ms,
+        },
     }

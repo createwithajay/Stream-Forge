@@ -11,6 +11,7 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [systemOnline, setSystemOnline] = useState(false);
   const [compilerStatus, setCompilerStatus] = useState(null);
+  const [inferenceStatus, setInferenceStatus] = useState(null);
 
   // Engine Management State
   const [engines, setEngines] = useState([]);
@@ -22,18 +23,20 @@ function App() {
   // Fetch dashboard data
   async function fetchDashboardData() {
     try {
-      const [
+     const [
   metricsResponse,
   camerasResponse,
   pipelineResponse,
   streamsResponse,
   compilerResponse,
+  inferenceResponse,
 ] = await Promise.all([
   fetch("http://127.0.0.1:8000/api/metrics"),
   fetch("http://127.0.0.1:8000/api/cameras"),
   fetch("http://127.0.0.1:8000/api/pipeline"),
   fetch("http://127.0.0.1:8000/api/streams"),
   fetch("http://127.0.0.1:8000/api/compiler/status"),
+  fetch("http://127.0.0.1:8000/api/inference/status"),
 ]);
 
      if (
@@ -51,6 +54,8 @@ function App() {
       const pipelineData = await pipelineResponse.json();
       const streamsData = await streamsResponse.json();
       const compilerData = await compilerResponse.json();
+      const inferenceData = await inferenceResponse.json();
+      setInferenceStatus(inferenceData);
 
       setMetrics(metricsData);
       setCameras(camerasData.cameras || []);
@@ -368,6 +373,52 @@ function App() {
           </div>
         </section>
       )}
+        
+        {/* Inference Pipeline */}
+{inferenceStatus && (
+  <section className="pipeline-section">
+
+    <div className="section-title">
+      <h2>Inference Pipeline</h2>
+
+      <span className="pipeline-running">
+        ● {inferenceStatus.pipeline.inference_mode}
+      </span>
+    </div>
+
+    <div className="pipeline-grid">
+
+      <div className="pipeline-card">
+        <h3>Frames Processed</h3>
+        <span>
+          {inferenceStatus.pipeline.frames_processed}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>Detections</h3>
+        <span>
+          {inferenceStatus.pipeline.detections}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>Average FPS</h3>
+        <span>
+          {inferenceStatus.pipeline.average_fps}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>Latency</h3>
+        <span>
+          {inferenceStatus.pipeline.average_latency_ms} ms
+        </span>
+      </div>
+
+    </div>
+  </section>
+)}
 
        {/* Model Compiler Status */}
 {compilerStatus && (
@@ -601,76 +652,88 @@ function App() {
       </section>
 
       {/* Multi-Stream Telemetry */}
-      <section className="camera-section">
+<section className="camera-section">
 
-        <div className="section-title">
-          <h2>
-            Multi-Stream Telemetry
-          </h2>
+  <div className="section-title">
+    <h2>
+      Multi-Stream Telemetry
+    </h2>
+
+    <span>
+      Asyncio Stream Manager
+    </span>
+  </div>
+
+  <div className="camera-grid">
+
+    {streams.map((stream) => (
+      <div
+        className="camera-card"
+        key={stream.stream_id}
+      >
+
+        <div className="camera-header">
+
+          <h3>
+            {stream.name}
+          </h3>
+
+          <span
+            className={
+              stream.status === "RUNNING"
+                ? "live"
+                : "offline"
+            }
+          >
+            ● {stream.status}
+          </span>
+
+        </div>
+
+        <div
+          className={
+            stream.status === "RUNNING"
+              ? "video-placeholder"
+              : "video-placeholder offline-video"
+          }
+        >
+          {stream.status === "RUNNING"
+            ? "Asyncio Stream Active"
+            : "Stream Offline"}
+        </div>
+
+        <div className="camera-info">
 
           <span>
-            Asyncio Stream Manager
+            {stream.fps} FPS
           </span>
-        </div>
 
-        <div className="camera-grid">
+          <span>•</span>
 
-          {streams.map((stream) => (
-            <div
-              className="camera-card"
-              key={stream.stream_id}
-            >
+          <span>
+            {stream.frames_processed} frames
+          </span>
 
-              <div className="camera-header">
+          <span>•</span>
 
-                <h3>
-                  {stream.name}
-                </h3>
+          <span>
+            {stream.detections} detections
+          </span>
 
-                <span
-                  className={
-                    stream.status === "RUNNING"
-                      ? "live"
-                      : "offline"
-                  }
-                >
-                  ● {stream.status}
-                </span>
+          <span>•</span>
 
-              </div>
-
-              <div
-                className={
-                  stream.status === "RUNNING"
-                    ? "video-placeholder"
-                    : "video-placeholder offline-video"
-                }
-              >
-                {stream.status === "RUNNING"
-                  ? "Asyncio Stream Active"
-                  : "Stream Offline"}
-              </div>
-
-              <div className="camera-info">
-
-                <span>
-                  {stream.fps} FPS
-                </span>
-
-                <span>•</span>
-
-                <span>
-                  {stream.frames_processed} frames
-                </span>
-
-              </div>
-
-            </div>
-          ))}
+          <span>
+            {stream.processing_mode}
+          </span>
 
         </div>
 
-      </section>
+      </div>
+    ))}
+
+  </div>
+
+</section>
 
       {/* Camera Monitoring */}
       <section className="camera-section">

@@ -10,19 +10,27 @@ class StreamState:
     status: str = "STOPPED"
     fps: float = 0.0
     frames_processed: int = 0
+    detections: int = 0
+    processing_mode: str = "SIMULATED"
 
 
 class StreamManager:
     """
-    Manages multiple video streams concurrently using asyncio.
+    Multi-stream orchestration manager for VisionEdge.
+
+    The current development environment uses simulated frame
+    processing. The architecture is designed so real video
+    decoding and TensorRT inference can be connected later.
     """
+
+    TARGET_FPS = 30
 
     def __init__(self):
         self.streams: Dict[int, StreamState] = {}
         self.tasks: Dict[int, asyncio.Task] = {}
 
     def add_stream(self, stream_id: int, name: str):
-        """Register a new stream."""
+        """Register a new video stream."""
 
         if stream_id not in self.streams:
             self.streams[stream_id] = StreamState(
@@ -31,35 +39,37 @@ class StreamManager:
             )
 
     async def _process_stream(self, stream_id: int):
-        """
-        Simulated asynchronous stream-processing loop.
-
-        This represents where actual video decoding and
-        TensorRT inference can later be connected.
-        """
+        """Run the asynchronous processing loop for one stream."""
 
         stream = self.streams[stream_id]
         stream.status = "RUNNING"
 
-        while True:
-            frame_start = asyncio.get_running_loop().time()
+        loop = asyncio.get_running_loop()
 
-            # Simulate asynchronous frame processing
-            await asyncio.sleep(1 / 30)
+        while True:
+            frame_start = loop.time()
+
+            # Simulated frame processing.
+            # Real decoder + TensorRT inference can be connected here.
+            await asyncio.sleep(1 / self.TARGET_FPS)
 
             stream.frames_processed += 1
 
-            frame_end = asyncio.get_running_loop().time()
-            elapsed = frame_end - frame_start
+            # Simulated inference result.
+            stream.detections += 1
+
+            elapsed = loop.time() - frame_start
 
             if elapsed > 0:
                 stream.fps = round(1 / elapsed, 2)
 
     async def start_stream(self, stream_id: int):
-        """Start processing a stream."""
+        """Start processing a registered stream."""
 
         if stream_id not in self.streams:
-            raise ValueError(f"Stream {stream_id} does not exist")
+            raise ValueError(
+                f"Stream {stream_id} does not exist"
+            )
 
         if stream_id in self.tasks:
             return
@@ -71,7 +81,7 @@ class StreamManager:
         self.tasks[stream_id] = task
 
     async def stop_stream(self, stream_id: int):
-        """Stop processing a stream."""
+        """Stop processing a stream safely."""
 
         task = self.tasks.get(stream_id)
 
@@ -88,8 +98,20 @@ class StreamManager:
         if stream_id in self.streams:
             self.streams[stream_id].status = "STOPPED"
 
+    async def start_all(self):
+        """Start all registered streams."""
+
+        for stream_id in self.streams:
+            await self.start_stream(stream_id)
+
+    async def stop_all(self):
+        """Stop all running streams."""
+
+        for stream_id in list(self.tasks.keys()):
+            await self.stop_stream(stream_id)
+
     def get_streams(self):
-        """Return current stream telemetry."""
+        """Return telemetry for every registered stream."""
 
         return [
             {
@@ -98,12 +120,14 @@ class StreamManager:
                 "status": stream.status,
                 "fps": stream.fps,
                 "frames_processed": stream.frames_processed,
+                "detections": stream.detections,
+                "processing_mode": stream.processing_mode,
             }
             for stream in self.streams.values()
         ]
 
 
-# Global stream manager
+# Global VisionEdge stream manager
 stream_manager = StreamManager()
 
 
