@@ -9,6 +9,9 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from video_decoder import decoder_status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from performance_audit import TensorRTPerformanceAudit
+from memory_profiler import MemoryProfiler
+from video_decoder import validate_rtsp_source
 
 from stream_manager import stream_manager
 from model_compiler import (
@@ -650,3 +653,30 @@ def inference_status():
             "average_latency_ms": stats.average_latency_ms,
         },
     }
+@app.get("/api/memory/profile")
+def memory_profile():
+    profiler = MemoryProfiler()
+    return profiler.profile(3)
+
+@app.get("/api/performance/audit")
+def performance_audit():
+    audit = TensorRTPerformanceAudit(frames=100)
+    result = audit.run()
+
+    return {
+        "frames_tested": result.frames,
+        "total_time_seconds": result.total_time_seconds,
+        "average_fps": result.average_fps,
+        "average_latency_ms": result.average_latency_ms,
+        "min_latency_ms": result.min_latency_ms,
+        "max_latency_ms": result.max_latency_ms,
+        "inference_mode": result.inference_mode,
+        "benchmark_mode": (
+            "REAL_TENSORRT"
+            if result.inference_mode == "REAL_TENSORRT"
+            else "SIMULATED"
+        ),
+    }
+@app.get("/api/rtsp/validate")
+def rtsp_validate(source: str):
+    return validate_rtsp_source(source)

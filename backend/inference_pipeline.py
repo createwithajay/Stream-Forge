@@ -5,7 +5,7 @@ Connects:
 
 Video Decoder
      ↓
-Decoded Frame
+GPU Memory Manager
      ↓
 Inference Engine
      ↓
@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from video_decoder import create_decoder
 from inference_engine import InferenceEngine
+from gpu_memory import GPUMemoryManager
 
 
 @dataclass
@@ -33,7 +34,7 @@ class PipelineStats:
 
 
 class InferencePipeline:
-    """Connect video decoding with object inference."""
+    """Connect video decoding, memory management and object inference."""
 
     def __init__(
         self,
@@ -48,12 +49,14 @@ class InferencePipeline:
             max_frames=max_frames,
         )
 
+        self.memory = GPUMemoryManager()
+
         self.inference = InferenceEngine()
 
         self.stats = PipelineStats()
 
     def run(self) -> PipelineStats:
-        """Process decoded frames through inference."""
+        """Process decoded frames through memory and inference."""
 
         start_time = time.perf_counter()
         total_latency = 0.0
@@ -61,8 +64,20 @@ class InferencePipeline:
 
         for decoded_frame in self.decoder.frames():
 
-            result = self.inference.infer(
+            # Move frame into the active processing memory space.
+            processing_frame = self.memory.upload(
                 decoded_frame.image
+            )
+
+            # Run inference.
+            #
+            # On NVIDIA/CUDA hardware this can receive a CuPy
+            # GPU buffer when the inference implementation supports it.
+            #
+            # On the current development machine this remains a
+            # NumPy CPU fallback.
+            result = self.inference.infer(
+                processing_frame
             )
 
             latency = result["inference_latency_ms"]
@@ -79,7 +94,7 @@ class InferencePipeline:
             3,
         )
 
-        if self.stats.frames_processed:
+        if self.stats.frames_processed and elapsed > 0:
             self.stats.average_fps = round(
                 self.stats.frames_processed / elapsed,
                 2,
@@ -100,6 +115,7 @@ class InferencePipeline:
         return {
             "source": self.source,
             "decoder": "PyAV",
+            "memory": self.memory.status(),
             "inference_engine": "VisionEdge Inference Engine",
             "inference_mode": self.inference.mode,
             "frames_processed": self.stats.frames_processed,
@@ -130,6 +146,7 @@ if __name__ == "__main__":
     print(f"Average FPS:      {stats.average_fps}")
     print(f"Average latency:  {stats.average_latency_ms} ms")
     print(f"Inference mode:   {pipeline.inference.mode}")
+    print(f"Memory mode:      {pipeline.memory.mode}")
 
     print()
     print("Pipeline status:")

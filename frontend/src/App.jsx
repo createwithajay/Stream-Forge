@@ -12,6 +12,8 @@ function App() {
   const [systemOnline, setSystemOnline] = useState(false);
   const [compilerStatus, setCompilerStatus] = useState(null);
   const [inferenceStatus, setInferenceStatus] = useState(null);
+  const [memoryProfile, setMemoryProfile] = useState(null);
+  const [performanceAudit, setPerformanceAudit] = useState(null);
 
   // Engine Management State
   const [engines, setEngines] = useState([]);
@@ -30,6 +32,8 @@ function App() {
   streamsResponse,
   compilerResponse,
   inferenceResponse,
+  memoryResponse,
+  performanceResponse,
 ] = await Promise.all([
   fetch("http://127.0.0.1:8000/api/metrics"),
   fetch("http://127.0.0.1:8000/api/cameras"),
@@ -37,14 +41,19 @@ function App() {
   fetch("http://127.0.0.1:8000/api/streams"),
   fetch("http://127.0.0.1:8000/api/compiler/status"),
   fetch("http://127.0.0.1:8000/api/inference/status"),
+  fetch("http://127.0.0.1:8000/api/memory/profile"),
+  fetch("http://127.0.0.1:8000/api/performance/audit"),
 ]);
 
-     if (
+    if (
   !metricsResponse.ok ||
   !camerasResponse.ok ||
   !pipelineResponse.ok ||
   !streamsResponse.ok ||
-  !compilerResponse.ok
+  !compilerResponse.ok ||
+  !inferenceResponse.ok ||
+  !memoryResponse.ok ||
+  !performanceResponse.ok
 ) {
         throw new Error("Failed to fetch dashboard data");
       }
@@ -54,6 +63,8 @@ function App() {
       const pipelineData = await pipelineResponse.json();
       const streamsData = await streamsResponse.json();
       const compilerData = await compilerResponse.json();
+      const memoryData = await memoryResponse.json();
+      const performanceData = await performanceResponse.json();
       const inferenceData = await inferenceResponse.json();
       setInferenceStatus(inferenceData);
 
@@ -62,6 +73,8 @@ function App() {
       setPipeline(pipelineData);
       setStreams(streamsData.streams || []);
       setCompilerStatus(compilerData);
+      setMemoryProfile(memoryData);
+      setPerformanceAudit(performanceData);
 
       setError("");
       setSystemOnline(true);
@@ -634,6 +647,56 @@ function App() {
 
       </section>
 
+       {/* Performance Audit */}
+<section className="camera-section">
+
+  <div className="section-title">
+    <h2>
+      Performance Audit
+    </h2>
+
+    <span>
+      TensorRT Benchmark
+    </span>
+  </div>
+
+  {performanceAudit && (
+    <div className="camera-grid">
+
+      <div className="camera-card">
+        <div className="camera-header">
+          <h3>Inference Performance</h3>
+
+          <span className="live">
+            ● {performanceAudit.benchmark_mode}
+          </span>
+        </div>
+
+        <div className="camera-info">
+          <span>
+            {performanceAudit.frames_tested} frames
+          </span>
+
+          <span>•</span>
+
+          <span>
+            {performanceAudit.average_fps} FPS
+          </span>
+
+          <span>•</span>
+
+          <span>
+            {performanceAudit.average_latency_ms} ms latency
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+  )}
+
+</section>
+
       {/* WebRTC Test Stream */}
       <section className="camera-section">
 
@@ -650,6 +713,64 @@ function App() {
         <WebRTCPlayer />
 
       </section>
+
+      {/* Memory Profile */}
+<section className="camera-section">
+
+  <div className="section-title">
+    <h2>Memory Profile</h2>
+    <span>Runtime Memory Monitoring</span>
+  </div>
+
+  {memoryProfile && (
+    <div className="camera-grid">
+
+      <div className="camera-card">
+
+        <div className="camera-header">
+          <h3>Process Memory</h3>
+
+          <span className="live">
+            ● {memoryProfile.potential_memory_leak
+              ? "CHECK"
+              : "STABLE"}
+          </span>
+        </div>
+
+        <div className="camera-info">
+
+          <span>
+            Before: {memoryProfile.process_memory_before_mb} MB
+          </span>
+
+          <span>•</span>
+
+          <span>
+            After: {memoryProfile.process_memory_after_mb} MB
+          </span>
+
+          <span>•</span>
+
+          <span>
+            Growth: {memoryProfile.process_memory_growth_mb} MB
+          </span>
+
+          <span>•</span>
+
+          <span>
+            GPU: {memoryProfile.gpu_available
+              ? "Available"
+              : "CPU Fallback"}
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+  )}
+
+</section>
 
       {/* Multi-Stream Telemetry */}
 <section className="camera-section">

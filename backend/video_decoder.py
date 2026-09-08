@@ -294,3 +294,78 @@ if __name__ == "__main__":
 
     print()
     print("Mock decoder test completed successfully.")
+
+def validate_rtsp_source(source: str) -> dict:
+    """
+    Validate an RTSP source without starting a long-running
+    decoding loop.
+    """
+
+    if not source:
+        return {
+            "valid": False,
+            "source": source,
+            "protocol": None,
+            "reachable": False,
+            "message": "RTSP source is empty.",
+        }
+
+    if not source.lower().startswith("rtsp://"):
+        return {
+            "valid": False,
+            "source": source,
+            "protocol": "NON_RTSP",
+            "reachable": False,
+            "message": "Source must start with rtsp://",
+        }
+
+    try:
+        import av
+
+        container = av.open(
+            source,
+            mode="r",
+            timeout=5.0,
+        )
+
+        video_streams = [
+            stream
+            for stream in container.streams
+            if stream.type == "video"
+        ]
+
+        container.close()
+
+        if not video_streams:
+            return {
+                "valid": True,
+                "source": source,
+                "protocol": "RTSP",
+                "reachable": True,
+                "video_stream": False,
+                "message": "RTSP source opened, but no video stream was found.",
+            }
+
+        stream = video_streams[0]
+
+        return {
+            "valid": True,
+            "source": source,
+            "protocol": "RTSP",
+            "reachable": True,
+            "video_stream": True,
+            "width": stream.codec_context.width,
+            "height": stream.codec_context.height,
+            "codec": stream.codec_context.name,
+            "message": "RTSP source opened successfully.",
+        }
+
+    except Exception as exc:
+        return {
+            "valid": True,
+            "source": source,
+            "protocol": "RTSP",
+            "reachable": False,
+            "video_stream": False,
+            "message": f"Unable to open RTSP source: {exc}",
+        }
