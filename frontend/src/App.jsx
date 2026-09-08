@@ -10,6 +10,7 @@ function App() {
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
   const [systemOnline, setSystemOnline] = useState(false);
+  const [compilerStatus, setCompilerStatus] = useState(null);
 
   // Engine Management State
   const [engines, setEngines] = useState([]);
@@ -22,23 +23,26 @@ function App() {
   async function fetchDashboardData() {
     try {
       const [
-        metricsResponse,
-        camerasResponse,
-        pipelineResponse,
-        streamsResponse,
-      ] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/metrics"),
-        fetch("http://127.0.0.1:8000/api/cameras"),
-        fetch("http://127.0.0.1:8000/api/pipeline"),
-        fetch("http://127.0.0.1:8000/api/streams"),
-      ]);
+  metricsResponse,
+  camerasResponse,
+  pipelineResponse,
+  streamsResponse,
+  compilerResponse,
+] = await Promise.all([
+  fetch("http://127.0.0.1:8000/api/metrics"),
+  fetch("http://127.0.0.1:8000/api/cameras"),
+  fetch("http://127.0.0.1:8000/api/pipeline"),
+  fetch("http://127.0.0.1:8000/api/streams"),
+  fetch("http://127.0.0.1:8000/api/compiler/status"),
+]);
 
-      if (
-        !metricsResponse.ok ||
-        !camerasResponse.ok ||
-        !pipelineResponse.ok ||
-        !streamsResponse.ok
-      ) {
+     if (
+  !metricsResponse.ok ||
+  !camerasResponse.ok ||
+  !pipelineResponse.ok ||
+  !streamsResponse.ok ||
+  !compilerResponse.ok
+) {
         throw new Error("Failed to fetch dashboard data");
       }
 
@@ -46,11 +50,13 @@ function App() {
       const camerasData = await camerasResponse.json();
       const pipelineData = await pipelineResponse.json();
       const streamsData = await streamsResponse.json();
+      const compilerData = await compilerResponse.json();
 
       setMetrics(metricsData);
       setCameras(camerasData.cameras || []);
       setPipeline(pipelineData);
       setStreams(streamsData.streams || []);
+      setCompilerStatus(compilerData);
 
       setError("");
       setSystemOnline(true);
@@ -362,6 +368,92 @@ function App() {
           </div>
         </section>
       )}
+
+       {/* Model Compiler Status */}
+{compilerStatus && (
+  <section className="camera-section">
+
+    <div className="section-title">
+      <h2>Model Compiler Status</h2>
+
+      <span
+        className={
+          compilerStatus.ready
+            ? "pipeline-running"
+            : "pipeline-stopped"
+        }
+      >
+        ● {compilerStatus.mode}
+      </span>
+    </div>
+
+    <div className="pipeline-grid">
+
+      <div className="pipeline-card">
+        <h3>Compilation</h3>
+        <span>
+          {compilerStatus.ready
+            ? "READY"
+            : "SIMULATED"}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>PyTorch</h3>
+        <span>
+          {compilerStatus.hardware.pytorch
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>ONNX</h3>
+        <span>
+          {compilerStatus.hardware.onnx
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>TensorRT</h3>
+        <span>
+          {compilerStatus.hardware.tensorrt
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>CUDA / NVIDIA</h3>
+        <span>
+          {compilerStatus.hardware.cuda
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"}
+        </span>
+      </div>
+
+      <div className="pipeline-card">
+        <h3>CuPy</h3>
+        <span>
+          {compilerStatus.hardware.cupy
+            ? "AVAILABLE"
+            : "NOT AVAILABLE"}
+        </span>
+      </div>
+
+    </div>
+
+    {!compilerStatus.ready && (
+      <div className="simulation-notice">
+        ⚠ Real TensorRT compilation requires the NVIDIA/CUDA
+        environment. Current compiler mode is SIMULATED.
+      </div>
+    )}
+
+  </section>
+)}
 
       {/* TensorRT Engine Management */}
       <section className="camera-section">

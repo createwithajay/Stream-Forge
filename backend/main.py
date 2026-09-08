@@ -2,30 +2,50 @@ import asyncio
 from pathlib import Path
 import shutil
 import uuid
+import subprocess
 
-from fastapi import FastAPI,  UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from stream_manager import stream_manager
 from fastapi.responses import Response
 
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+from stream_manager import stream_manager
+from model_compiler import (
+    get_hardware_status,
+    compilation_capability,
+    get_nvidia_info,
+)
+
+from aiortc import (
+    RTCPeerConnection,
+    RTCSessionDescription,
+    VideoStreamTrack,
+)
+
 from av import VideoFrame
 import numpy as np
 
 from pydantic import BaseModel
-from prometheus_client import Counter, Gauge, generate_latest
+from prometheus_client import (
+    Counter,
+    Gauge,
+    generate_latest,
+)
 import psutil
-import subprocess
 
-# TensorRT engine storage
+
+# ==================================================
+# TensorRT Engine Storage
+# ==================================================
+
 ENGINE_DIR = Path("engines")
 ENGINE_DIR.mkdir(exist_ok=True)
 
 active_engine = None
 
-# --------------------------------------------------
+
+# ==================================================
 # VisionEdge FastAPI Application
-# --------------------------------------------------
+# ==================================================
 
 app = FastAPI(
     title="VisionEdge API",
@@ -34,9 +54,9 @@ app = FastAPI(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # CORS Configuration
-# --------------------------------------------------
+# ==================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,9 +67,9 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # Prometheus Metrics
-# --------------------------------------------------
+# ==================================================
 
 cpu_gauge = Gauge(
     "visionedge_cpu_usage_percent",
@@ -82,9 +102,9 @@ camera_requests = Counter(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # Root Endpoint
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/")
 def root():
@@ -95,9 +115,9 @@ def root():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # Health Check
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/health")
 def health_check():
@@ -107,9 +127,27 @@ def health_check():
     }
 
 
-# --------------------------------------------------
+# ==================================================
+# Model Compiler Status
+# ==================================================
+
+@app.get("/api/compiler/status")
+def compiler_status():
+    capability = compilation_capability()
+
+    return {
+        "compiler": "VisionEdge Model Compiler",
+        "mode": capability["mode"],
+        "ready": capability["ready"],
+        "hardware": get_hardware_status(),
+        "nvidia": get_nvidia_info(),
+        "missing_components": capability["missing_components"],
+    }
+
+
+# ==================================================
 # GPU Metrics
-# --------------------------------------------------
+# ==================================================
 
 def get_gpu_metrics():
     """
@@ -135,7 +173,7 @@ def get_gpu_metrics():
 
             gpu_usage, memory_used, memory_total = map(
                 float,
-                result.stdout.strip().split(",")
+                result.stdout.strip().split(","),
             )
 
             gpu_memory_percent = (
@@ -150,7 +188,7 @@ def get_gpu_metrics():
                 "gpu_memory_total_mb": memory_total,
                 "gpu_memory_percent": round(
                     gpu_memory_percent,
-                    2
+                    2,
                 ),
                 "decoder_utilization": None,
                 "source": "nvidia-smi",
@@ -170,26 +208,24 @@ def get_gpu_metrics():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # System Metrics
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/metrics")
 def get_metrics():
 
-    # Real system metrics
+    # Real CPU and memory metrics
     cpu_usage = psutil.cpu_percent(interval=0.1)
     memory_usage = psutil.virtual_memory().percent
 
     # GPU metrics
     gpu_metrics = get_gpu_metrics()
 
-    # FPS is currently simulated.
-    # It can later be connected to the real video pipeline.
+    # Currently simulated until real video pipeline exists
     fps = 30
 
-    # Inference latency is currently simulated.
-    # It can later be measured from the TensorRT inference loop.
+    # Currently simulated until real TensorRT inference exists
     inference_latency = 12.5
 
     # Update Prometheus metrics
@@ -231,27 +267,27 @@ def get_metrics():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # Pipeline Status
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/pipeline")
 def get_pipeline_status():
 
     return {
-    "pipeline": {
-        "video_input": "ACTIVE",
-        "deepstream": "NOT_AVAILABLE",
-        "tensorrt_inference": "SIMULATED",
-        "output": "ACTIVE",
-    },
-    "status": "RUNNING",
-  }
+        "pipeline": {
+            "video_input": "ACTIVE",
+            "deepstream": "NOT_AVAILABLE",
+            "tensorrt_inference": "SIMULATED",
+            "output": "ACTIVE",
+        },
+        "status": "RUNNING",
+    }
 
 
-# --------------------------------------------------
+# ==================================================
 # Camera Monitoring
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/cameras")
 def get_cameras():
@@ -289,9 +325,8 @@ def get_cameras():
         },
     ]
 
-    # Per-stream FPS telemetry
+    # Per-stream telemetry
     for camera in cameras:
-
         camera["telemetry"] = {
             "fps": camera["fps"],
             "stream_status": camera["status"],
@@ -308,9 +343,9 @@ def get_cameras():
     }
 
 
-# --------------------------------------------------
+# ==================================================
 # Prometheus Endpoint
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/metrics")
 def prometheus_metrics():
@@ -321,9 +356,9 @@ def prometheus_metrics():
     )
 
 
-# --------------------------------------------------
+# ==================================================
 # WebRTC Test Video Track
-# --------------------------------------------------
+# ==================================================
 
 class TestVideoTrack(VideoStreamTrack):
 
@@ -341,7 +376,7 @@ class TestVideoTrack(VideoStreamTrack):
         # Create black frame
         frame = np.zeros(
             (height, width, 3),
-            dtype=np.uint8
+            dtype=np.uint8,
         )
 
         # Moving green test rectangle
@@ -359,7 +394,7 @@ class TestVideoTrack(VideoStreamTrack):
         # Convert NumPy frame to PyAV frame
         video_frame = VideoFrame.from_ndarray(
             frame,
-            format="bgr24"
+            format="bgr24",
         )
 
         video_frame.pts = pts
@@ -370,9 +405,9 @@ class TestVideoTrack(VideoStreamTrack):
         return video_frame
 
 
-# --------------------------------------------------
+# ==================================================
 # WebRTC Offer Model
-# --------------------------------------------------
+# ==================================================
 
 class WebRTCOffer(BaseModel):
 
@@ -380,13 +415,13 @@ class WebRTCOffer(BaseModel):
     type: str
 
 
-# --------------------------------------------------
+# ==================================================
 # WebRTC Offer Endpoint
-# --------------------------------------------------
+# ==================================================
 
 @app.post("/api/webrtc/offer")
 async def webrtc_offer(
-    offer: WebRTCOffer
+    offer: WebRTCOffer,
 ):
 
     peer_connection = RTCPeerConnection()
@@ -414,20 +449,25 @@ async def webrtc_offer(
         "sdp": peer_connection.localDescription.sdp,
         "type": peer_connection.localDescription.type,
     }
-# --------------------------------------------------
+
+
+# ==================================================
 # Multi-Stream Asyncio Monitoring
-# --------------------------------------------------
+# ==================================================
 
 @app.get("/api/streams")
 def get_streams():
+
     return {
         "streams": stream_manager.get_streams(),
         "stream_count": len(stream_manager.streams),
         "active_streams": len(stream_manager.tasks),
     }
-    # --------------------------------------------------
+
+
+# ==================================================
 # Start Multi-Stream Asyncio Processing
-# --------------------------------------------------
+# ==================================================
 
 @app.on_event("startup")
 async def start_streams():
@@ -439,34 +479,64 @@ async def start_streams():
 
     # Camera 04 intentionally remains offline
 
+
+# ==================================================
+# TensorRT Engine Upload
+# ==================================================
+
 @app.post("/api/engines/upload")
-async def upload_engine(file: UploadFile = File(...)):
+async def upload_engine(
+    file: UploadFile = File(...),
+):
     """Upload a TensorRT engine file."""
 
     if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
+        raise HTTPException(
+            status_code=400,
+            detail="No filename provided",
+        )
 
-    extension = Path(file.filename).suffix.lower()
+    extension = Path(
+        file.filename
+    ).suffix.lower()
 
     if extension not in {".engine", ".plan"}:
         raise HTTPException(
             status_code=400,
-            detail="Only .engine and .plan TensorRT files are supported",
+            detail=(
+                "Only .engine and .plan TensorRT files "
+                "are supported"
+            ),
         )
 
-    safe_name = f"{uuid.uuid4().hex}_{Path(file.filename).name}"
+    safe_name = (
+        f"{uuid.uuid4().hex}_"
+        f"{Path(file.filename).name}"
+    )
+
     destination = ENGINE_DIR / safe_name
 
     with destination.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        shutil.copyfileobj(
+            file.file,
+            buffer,
+        )
 
     return {
         "status": "uploaded",
         "engine_name": safe_name,
         "original_name": file.filename,
         "execution_mode": "SIMULATED",
-        "message": "Engine uploaded successfully. TensorRT execution is currently simulated.",
+        "message": (
+            "Engine uploaded successfully. "
+            "TensorRT execution is currently simulated."
+        ),
     }
+
+
+# ==================================================
+# List TensorRT Engines
+# ==================================================
 
 @app.get("/api/engines")
 def list_engines():
@@ -475,12 +545,27 @@ def list_engines():
     engines = []
 
     for engine_file in ENGINE_DIR.iterdir():
-        if engine_file.is_file() and engine_file.suffix.lower() in {".engine", ".plan"}:
-            engines.append({
-                "engine_name": engine_file.name,
-                "size_mb": round(engine_file.stat().st_size / (1024 * 1024), 2),
-                "active": engine_file.name == active_engine,
-            })
+
+        if (
+            engine_file.is_file()
+            and engine_file.suffix.lower()
+            in {".engine", ".plan"}
+        ):
+
+            engines.append(
+                {
+                    "engine_name": engine_file.name,
+                    "size_mb": round(
+                        engine_file.stat().st_size
+                        / (1024 * 1024),
+                        2,
+                    ),
+                    "active": (
+                        engine_file.name
+                        == active_engine
+                    ),
+                }
+            )
 
     return {
         "engines": engines,
@@ -489,17 +574,31 @@ def list_engines():
         "execution_mode": "SIMULATED",
     }
 
+
+# ==================================================
+# Engine Switch Request
+# ==================================================
+
 class EngineSwitchRequest(BaseModel):
+
     engine_name: str
 
 
+# ==================================================
+# Switch Active TensorRT Engine
+# ==================================================
+
 @app.post("/api/engines/switch")
-def switch_engine(request: EngineSwitchRequest):
+def switch_engine(
+    request: EngineSwitchRequest,
+):
     """Switch the active TensorRT engine."""
 
     global active_engine
 
-    engine_path = ENGINE_DIR / request.engine_name
+    engine_path = (
+        ENGINE_DIR / request.engine_name
+    )
 
     if not engine_path.is_file():
         raise HTTPException(
@@ -507,7 +606,10 @@ def switch_engine(request: EngineSwitchRequest):
             detail="Engine file not found",
         )
 
-    if engine_path.suffix.lower() not in {".engine", ".plan"}:
+    if engine_path.suffix.lower() not in {
+        ".engine",
+        ".plan",
+    }:
         raise HTTPException(
             status_code=400,
             detail="Invalid TensorRT engine file",
@@ -519,6 +621,7 @@ def switch_engine(request: EngineSwitchRequest):
         "status": "switched",
         "active_engine": active_engine,
         "execution_mode": "SIMULATED",
-        "message": "Active TensorRT engine changed successfully.",
+        "message": (
+            "Active TensorRT engine changed successfully."
+        ),
     }
-
