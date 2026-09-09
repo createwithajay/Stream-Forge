@@ -11,6 +11,8 @@ from .metrics import (
     EVENTS_FAILED,
     EVENTS_TOTAL,
     PROCESSING_SECONDS,
+    PROCESSING_LAG,
+    EVENT_LAG_DISTRIBUTION,
     QUEUE_DEPTH,
     THROUGHPUT,
     WORKER_RESTARTS,
@@ -26,6 +28,9 @@ def worker_loop(worker_id: int, event_queue: mp.Queue, result_queue: mp.Queue, s
             continue
 
         started = time.perf_counter()
+        created_at = event.get("timestamp")
+        lag = (time.time() - created_at) if created_at else None
+
         try:
             # A tiny deterministic workload keeps the benchmark repeatable.
             if processing_delay_ms > 0:
@@ -34,9 +39,9 @@ def worker_loop(worker_id: int, event_queue: mp.Queue, result_queue: mp.Queue, s
             if event.get("temperature", 0) < -20 or event.get("temperature", 0) > 60:
                 raise ValueError("sensor value outside accepted operating range")
 
-            result_queue.put(("success", time.perf_counter() - started))
+            result_queue.put(("success", time.perf_counter() - started, lag))
         except Exception:
-            result_queue.put(("failure", time.perf_counter() - started))
+            result_queue.put(("failure", time.perf_counter() - started, lag))
 
 
 @dataclass
@@ -109,7 +114,7 @@ class WorkerSupervisor:
     def _drain_results(self) -> None:
         while True:
             try:
-                result, latency = self.result_queue.get_nowait()
+                result, latency, lag = self.result_queue.get_nowait()
             except queue.Empty:
                 break
             self.total_processed += 1
@@ -118,6 +123,10 @@ class WorkerSupervisor:
             else:
                 EVENTS_FAILED.inc()
             PROCESSING_SECONDS.observe(latency)
+
+            if lag is not None:
+                PROCESSING_LAG.set(lag)
+                EVENT_LAG_DISTRIBUTION.observe(lag)
 
     def snapshot(self) -> dict:
         self._drain_results()

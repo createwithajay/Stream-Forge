@@ -38,3 +38,14 @@ THROUGHPUT = Gauge(
     "streamforge_events_per_second",
     "Rolling events per second estimate",
 )
+
+PROCESSING_LAG = Gauge(
+    "streamforge_processing_lag_seconds",
+    "Time between an event's creation and when it was fully processed",
+)
+
+EVENT_LAG_DISTRIBUTION = Histogram(
+    "streamforge_event_lag_distribution_seconds",
+    "Distribution of end-to-end lag per event",
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0),
+)
