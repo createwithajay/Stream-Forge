@@ -1,5 +1,13 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 .env
-.venv/
+
+backend/engines/
+backend/main_backup.py
+backend/stream_manager_backup.py
+backend/test_upload.engine
+backend/payRecover-AI
+backend/payrecover_ai.py
+backend/practiced.json
