@@ -15,6 +15,7 @@ from prometheus_client import make_asgi_app
 from .config import settings
 from .models import TelemetryEvent
 from .supervisor import WorkerSupervisor
+from .metrics import PROCESSING_LAG, THROUGHPUT
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -122,6 +123,16 @@ def reset():
         processing_delay_ms=settings.processing_delay_ms,
     )
     return {"status": "reset", "workers": settings.worker_count}
+
+
+@app.get("/api/metrics-summary")
+def metrics_summary():
+    lag = PROCESSING_LAG._value.get()
+    return {
+        "processing_lag_seconds": lag,
+        "events_per_second": THROUGHPUT._value.get(),
+        "status": "healthy" if lag < 2.0 else "degraded",
+    }
 
 
 metrics_app = make_asgi_app()
